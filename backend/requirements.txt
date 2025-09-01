@@ -8,7 +8,7 @@ cohere
 google-generativeai
 
 # Vector DB
-pinecone-client
+pinecone
 
 # Tokenization
 tiktoken
