@@ -1,6 +1,7 @@
 # Core backend
 fastapi
 uvicorn
+gunicorn
 
 # AI APIs
 openai
@@ -18,3 +19,8 @@ python-dotenv
 
 # File upload (multipart forms)
 python-multipart
+
+# File parsing
+PyPDF2
+python-docx
+pandas
