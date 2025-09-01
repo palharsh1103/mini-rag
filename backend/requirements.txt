@@ -1,0 +1,20 @@
+# Core backend
+fastapi
+uvicorn
+
+# AI APIs
+openai
+cohere
+google-generativeai
+
+# Vector DB
+pinecone-client
+
+# Tokenization
+tiktoken
+
+# Environment variables
+python-dotenv
+
+# File upload (multipart forms)
+python-multipart
