@@ -1,30 +1,60 @@
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from embeddings import chunk_text
 from vectorstore import upsert_chunks
 from retriever import retrieve_and_answer
 from dotenv import load_dotenv
 import os
+import io
+import pandas as pd
+import docx
+import PyPDF2
 
 # Load environment variables
 load_dotenv()
-print("Gemini API Key:", os.getenv("GEMINI_API_KEY"))
-print("Pinecone API Key:", os.getenv("PINECONE_API_KEY"))
+print("Environment loaded. Keys detected.")  # Avoid printing real keys
 
 app = FastAPI()
 
 # --- Upload Endpoint ---
 @app.post("/upload/")
 async def upload_file(file: UploadFile = File(...)):
-    text = (await file.read()).decode("utf-8")
-    chunks = chunk_text(text)
-    upsert_chunks(chunks, {"source": file.filename})
-    return {"status": "uploaded", "chunks": len(chunks)}
+    filename = file.filename.lower()
+    raw = await file.read()
+
+    try:
+        if filename.endswith(".txt"):
+            text = raw.decode("utf-8")
+
+        elif filename.endswith(".pdf"):
+            reader = PyPDF2.PdfReader(io.BytesIO(raw))
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+        elif filename.endswith(".docx"):
+            doc = docx.Document(io.BytesIO(raw))
+            text = "\n".join(p.text for p in doc.paragraphs)
+
+        elif filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(raw))
+            text = df.to_string()
+
+        else:
+            return JSONResponse({"error": "Unsupported file type"}, status_code=400)
+
+        chunks = chunk_text(text)
+        upsert_chunks(chunks, {"source": file.filename})
+        return {"status": "uploaded", "chunks": len(chunks)}
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 
 # --- Query Request Model ---
 class QueryRequest(BaseModel):
     query: str
+
 
 # --- Query Endpoint ---
 @app.post("/query/")
@@ -49,6 +79,7 @@ async def query_endpoint(
     # Run retriever
     answer = retrieve_and_answer(query)
     return {"answer": answer}
+
 
 # --- Run server ---
 if __name__ == "__main__":
